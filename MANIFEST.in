@@ -1,0 +1,7 @@
+include README.md
+include LICENSE
+recursive-include afm *.py *.json
+recursive-include afm/plugins *
+global-exclude __pycache__ *.py[cod]
+
+

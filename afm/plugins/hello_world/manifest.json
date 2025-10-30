@@ -1,0 +1,7 @@
+{
+  "name": "hello_world",
+  "version": "0.1",
+  "description": "Sample hello world plugin",
+  "author": "Agent Foundry",
+  "dependencies": {}
+}
