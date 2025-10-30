@@ -1,1 +1,29 @@
--e __pycache__/\n*.pyc\n.env\ndata/registry.json
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+
+# Virtual envs
+.venv/
+venv/
+.env
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Test/coverage caches
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.swo
+
+# Project data files
+data/registry.json
+data/lock.json
