@@ -136,6 +136,73 @@ Agent Foundry is meant to be **built together**. You can help by:
 
 ---
 
+ ## 📦 Parameters and I/O Specification
+
+ Agent Foundry plugins and pipelines follow a consistent contract for inputs and outputs to enable composition, testing, and reproducibility.
+
+ ### Parameters
+
+ - Format: JSON object (UTF-8)
+ - Validation: JSON Schema (Draft 7+) or Pydantic models (recommended in Python)
+ - Versioning: Schemas should be versioned alongside the plugin (e.g., `OCRService@1`)
+
+ Example schema (JSON Schema):
+
+ ```json
+ {
+   "$schema": "https://json-schema.org/draft-07/schema#",
+   "$id": "https://agent-foundry.dev/schemas/ocr.extract_text@1.json",
+   "title": "OCR.extract_text parameters",
+   "type": "object",
+   "required": ["image_path"],
+   "properties": {
+     "image_path": { "type": "string" },
+     "lang": { "type": "string", "default": "eng" },
+     "dpi": { "type": "integer", "minimum": 72, "maximum": 1200 }
+   },
+   "additionalProperties": false
+ }
+ ```
+
+ Recommended validation flow:
+ 1) Load JSON params → 2) Validate against schema → 3) Pass typed object to implementation.
+
+ ### Standard Output/Errors/Exit Code
+
+ - stdout: Structured JSON result on success
+ - stderr: Human-readable logs, warnings, and error diagnostics
+ - exit code: `0` for success; non-zero for failure (e.g., `2` for validation error, `3` for runtime error)
+
+ Success payload shape:
+
+ ```json
+ {
+   "success": true,
+   "data": { /* task-specific result */ },
+   "meta": { "plugin": "ocr.tesseract", "version": "0.4.2", "elapsed_ms": 123 }
+ }
+ ```
+
+ Error payload shape (written to stdout for machine consumption, details to stderr):
+
+ ```json
+ {
+   "success": false,
+   "error": {
+     "code": "ValidationError",
+     "message": "'image_path' is required",
+     "details": { "path": ["image_path"], "schema": "ocr.extract_text@1" }
+   },
+   "meta": { "plugin": "ocr.tesseract", "version": "0.4.2" }
+ }
+ ```
+
+ Suggested exit codes:
+ - 2: Parameter/Schema validation error
+ - 3: Dependency or environment error (e.g., missing binary/model)
+ - 4: External I/O failure (network/filesystem)
+ - 5: Plugin-defined runtime error
+
 ## 🗺 Roadmap
 
 * **M1**: Core skeleton (interfaces, container, CLI, file-registry driver, lock system).
