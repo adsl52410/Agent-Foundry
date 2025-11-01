@@ -31,3 +31,8 @@ data/lock.json
 # Local plugins (do not commit user-specific plugins)
 afm/plugins/*
 !afm/plugins/__init__.py
+
+
+# IDEs
+.cursor/
+.vscode/
