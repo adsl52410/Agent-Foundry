@@ -33,6 +33,12 @@ afm/plugins/*
 !afm/plugins/__init__.py
 
 
-# IDEs
+# Misc
+.idea/
 .cursor/
 .vscode/
+.cursor/
+
+
+# vendor files
+vendor/
