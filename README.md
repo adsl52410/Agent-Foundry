@@ -15,29 +15,59 @@ Agent Foundry is an **open-source toolbox and plugin ecosystem** for building, s
 
 ---
 
-## ⚙️ Core Features (MVP → Future)  
+## ⚙️ Core Features  
 
 - 🔌 **Plugin System** — standardized interfaces for AI, OCR, window, screenshot, and more.  
-- 📦 **Registry (File-system based)** — simple NAS/local folder registry with `index.json`, `meta.json`, `checksums.txt`.  
+- 📦 **Remote Registry** — file-system based registry (default: `~/Desktop/af-registry/`) with version management and `index.json`.  
+- 📥 **Plugin Management** — install, update, and publish plugins via CLI with automatic version resolution.  
 - 🔒 **Lockfiles** — guarantee reproducibility across machines and teams.  
-- 🛠 **CLI & API** — `agent-foundry` CLI for installing, verifying, and running pipelines.  
-- 🚀 **Pipeline Execution** — start with Python APIs, later support declarative YAML + lock.  
+- 🛠 **CLI** — comprehensive command-line interface for plugin lifecycle management.  
+- 🚀 **Pipeline Execution** — run plugins individually or compose them into workflows.  
 
 ---
 
-## ⚡ Quick Start (MVP idea)  
+## ⚡ Quick Start  
+
+### 環境設定
 
 ```bash
-# Lock down plugin versions
-agent-foundry lock resolve --from ./af-registry
+# 創建並啟動虛擬環境
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install and verify plugins
-agent-foundry plugins install --from ./af-registry
-agent-foundry plugins verify --from ./af-registry
-
-# Run a pipeline (e.g. Window → Screenshot → OCR → AI)
-agent-foundry line --pipeline examples/line_pipeline_demo.py --save-artifacts
+# 安裝依賴
+pip install -r requirements.txt
 ```
+
+### 基本使用
+
+```bash
+# 啟動虛擬環境（每次使用前）
+source venv/bin/activate
+
+# 上傳插件到遠端 registry（桌面資料夾）
+python3 -m afm.cli publish hello_world
+
+# 查看遠端可用的插件
+python3 -m afm.cli remote-list
+
+# 從遠端安裝插件
+python3 -m afm.cli install hello_world
+
+# 查看已安裝的插件
+python3 -m afm.cli list
+
+# 執行插件
+python3 -m afm.cli run hello_world --args "你的參數"
+
+# 更新插件到最新版本
+python3 -m afm.cli update hello_world
+
+# 生成鎖定檔
+python3 -m afm.cli lock
+```
+
+> **注意**：遠端 registry 預設位置在 `~/Desktop/af-registry/`，可在 `afm/config/settings.py` 中修改。
 
 ---
 
@@ -96,32 +126,77 @@ sha256  agent_foundry_ocr_tesseract-0.4.2-py3-none-any.whl  a7d2...9f
 
 ### 4. Publish to the registry
 
+使用 CLI 上傳插件到遠端 registry：
+
 ```bash
-# Build the wheel
-agent-foundry plugin build
+# 上傳插件（自動讀取 manifest.json 中的版本）
+python3 -m afm.cli publish ocr.tesseract
 
-# Put it into the registry
-mkdir -p ./af-registry/plugins/ocr.tesseract/0.4.2
-cp dist/agent_foundry_ocr_tesseract-0.4.2-*.whl ./af-registry/plugins/ocr.tesseract/0.4.2/
-agent-foundry cloud fs checksum ./af-registry/plugins/ocr.tesseract/0.4.2
-agent-foundry cloud fs promote ocr.tesseract --version 0.4.2 --channel stable --root ./af-registry
-agent-foundry cloud fs update-index ./af-registry
+# 或指定版本
+python3 -m afm.cli publish ocr.tesseract --version 0.4.2
 ```
 
-### 5. Use it in a pipeline
+插件會自動上傳到 `~/Desktop/af-registry/plugins/ocr.tesseract/0.4.2/`，並更新 `index.json`。
 
-```python
-from agent_foundry.container import Container
+### 5. Install and use the plugin
 
-c = Container(registry_map={"ocr.tesseract": "agent_foundry_ocr_tesseract@0.4.2"})
-ocr = c.resolve("ocr.tesseract")
+```bash
+# 從遠端安裝
+python3 -m afm.cli install ocr.tesseract
 
-res = ocr.extract_text("sample.png")
-print(res)
-# => {"success": True, "data": {"text": "Hello world"}, "meta": {"engine": "tesseract"}}
+# 或安裝特定版本
+python3 -m afm.cli install ocr.tesseract --version 0.4.2
+
+# 執行插件
+python3 -m afm.cli run ocr.tesseract --args '{"image_path": "sample.png"}'
 ```
+
+### 6. Plugin Registry Structure
+
+遠端 registry 結構（預設在 `~/Desktop/af-registry/`）：
+
+```
+af-registry/
+├── index.json              # 插件索引，記錄所有可用插件和版本
+└── plugins/
+    └── {plugin_name}/
+        └── {version}/
+            ├── plugin.py
+            └── manifest.json
+```
+
+本地安裝的插件位於 `afm/plugins/{plugin_name}/`，註冊表資訊在 `data/registry.json`。
 
 ---
+
+## 📚 CLI 命令參考
+
+### 插件管理
+
+- `install <name> [--version VERSION]` - 從遠端 registry 安裝插件（未指定版本時自動使用最新版本）
+- `list` - 列出已安裝的插件
+- `uninstall <name>` - 解除安裝插件
+- `update <name> [--version VERSION]` - 更新插件（未指定版本時自動檢查並更新到最新版本）
+- `run <name> [--args ARGS]` - 執行插件
+
+### Registry 操作
+
+- `publish <name> [--version VERSION]` - 上傳本地插件到遠端 registry
+- `remote-list` - 列出遠端 registry 中所有可用的插件
+- `lock` - 重新生成鎖定檔（固定當前所有插件的確切版本）
+
+### 範例
+
+```bash
+# 完整工作流程
+python3 -m afm.cli publish my_plugin          # 上傳插件
+python3 -m afm.cli remote-list                # 查看遠端插件
+python3 -m afm.cli install my_plugin          # 安裝插件
+python3 -m afm.cli list                        # 查看已安裝
+python3 -m afm.cli run my_plugin --args "test" # 執行插件
+python3 -m afm.cli update my_plugin            # 更新到最新版本
+python3 -m afm.cli lock                        # 生成鎖定檔
+```
 
 ## 🤝 How to Contribute
 
@@ -132,7 +207,7 @@ Agent Foundry is meant to be **built together**. You can help by:
 3. Improving testing, CI/CD, and conformance checks.
 4. Sharing ideas and feedback in issues/discussions.
 
-👉 See `CONTRIBUTING.md` (coming soon) for setup steps.
+👉 See `CONTRIBUTING.md` for setup steps and development guidelines.
 
 ---
 

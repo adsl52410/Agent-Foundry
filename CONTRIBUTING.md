@@ -43,20 +43,21 @@ pytest -q
 ```
 
 ### Running the CLI locally
-This repository currently exposes a Python module entrypoint.
+This repository exposes a Python module entrypoint.
 
 ```bash
-# Example usage via Python module
-python -m afm --help
-python -m afm list
-python -m afm install hello_world
+# 確保在虛擬環境中
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 基本命令
+python -m afm.cli --help
+python -m afm.cli list
+python -m afm.cli install hello_world
+python -m afm.cli publish hello_world
+python -m afm.cli remote-list
 ```
 
-If you have a separate, global CLI named `agent-foundry` in your environment, equivalent commands may look like:
-```bash
-agent-foundry --help
-```
-(Use whichever entrypoint exists in your local setup.)
+> **注意**：使用 `python -m afm.cli` 而非 `python -m afm`，因為 CLI 模組位於 `afm/cli.py`。
 
 ---
 
@@ -136,23 +137,93 @@ At minimum:
 See the project README for more examples and the expected fields.
 
 ### Local development
-- Place your plugin under a development path (e.g., `afm/plugins/<your_plugin>` for local testing) or package it as a separate Python distribution.
-- Ensure the plugin loads via the existing loader and registry mechanisms.
-- Add tests covering the plugin’s behavior (mock external calls when possible).
+
+1. **創建插件目錄**：
+```bash
+mkdir -p afm/plugins/my_plugin
+```
+
+2. **創建 plugin.py**：
+```python
+def run(args):
+    print(f"My plugin executed with args: {args}")
+    return {"status": "success"}
+```
+
+3. **創建 manifest.json**：
+```json
+{
+  "name": "my_plugin",
+  "version": "0.1.0",
+  "description": "My test plugin",
+  "author": "Your Name",
+  "dependencies": {}
+}
+```
+
+4. **測試插件**：
+```bash
+# 執行插件
+python -m afm.cli run my_plugin --args "test"
+
+# 上傳到遠端 registry（用於分享）
+python -m afm.cli publish my_plugin
+
+# 從遠端安裝（驗證下載功能）
+python -m afm.cli uninstall my_plugin
+python -m afm.cli install my_plugin
+```
+
+5. **添加測試**：在 `tests/` 目錄添加測試，覆蓋插件的行為（盡可能 mock 外部呼叫）。
 
 ---
 
 ## Registry, Lockfile, and Reproducibility
-Paths are centralized in `afm/config/settings.py`:
-- `DATA_DIR = 'data'`
-- `REGISTRY_PATH = f"{DATA_DIR}/registry.json"`
-- `LOCKFILE_PATH = f"{DATA_DIR}/lock.json"`
-- `PLUGIN_DIR = 'afm/plugins'`
 
-Typical workflow:
-- Update `registry.json` when adding/updating available plugins.
-- Run lock generation to pin exact versions (see README’s lock instructions).
-- Commit both registry and lockfile changes for reproducibility.
+### 路徑設定
+
+路徑集中在 `afm/config/settings.py`：
+
+**本地路徑**：
+- `DATA_DIR = 'data'` - 本地資料目錄
+- `REGISTRY_PATH = f"{DATA_DIR}/registry.json"` - 本地插件註冊表
+- `LOCKFILE_PATH = f"{DATA_DIR}/lock.json"` - 版本鎖定檔
+- `PLUGIN_DIR = 'afm/plugins'` - 已安裝的插件目錄
+
+**遠端 Registry 路徑**：
+- `REMOTE_REGISTRY_DIR` - 遠端 registry 根目錄（預設：`~/Desktop/af-registry/`）
+- `REMOTE_PLUGINS_DIR` - 遠端插件目錄（`{REMOTE_REGISTRY_DIR}/plugins/`）
+- `REMOTE_INDEX_PATH` - 遠端索引檔案（`{REMOTE_REGISTRY_DIR}/index.json`）
+
+### 工作流程
+
+1. **開發插件**：在 `afm/plugins/{your_plugin}/` 創建插件
+2. **上傳到遠端**：`python -m afm.cli publish {your_plugin}`
+3. **安裝插件**：`python -m afm.cli install {your_plugin}`（從遠端下載）
+4. **生成鎖定檔**：`python -m afm.cli lock`（固定所有插件版本）
+5. **提交變更**：提交 `data/registry.json` 和 `data/lock.json` 以確保可重現性
+
+### 遠端 Registry 結構
+
+```
+~/Desktop/af-registry/
+├── index.json              # 插件索引（自動維護）
+└── plugins/
+    └── {plugin_name}/
+        └── {version}/
+            ├── plugin.py
+            └── manifest.json
+```
+
+`index.json` 格式：
+```json
+{
+  "plugin_name": {
+    "versions": ["0.1.0", "0.2.0"],
+    "latest": "0.2.0"
+  }
+}
+```
 
 ---
 
