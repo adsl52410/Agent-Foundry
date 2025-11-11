@@ -42,3 +42,6 @@ afm/plugins/*
 
 # vendor files
 vendor/
+
+# test files
+test_*
