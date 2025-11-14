@@ -2,6 +2,12 @@
 工具模組 - 自動導入所有註冊的工具，提供類似 LangChain 的使用體驗
 """
 from afm.core.tool_registry import get_registry, tool
+from afm.core.tool_reader import (
+    ToolReader,
+    get_tools,
+    get_tools_json,
+    get_tools_summary,
+)
 from afm.config.settings import PLUGIN_DIR
 import logging
 import os
@@ -51,5 +57,10 @@ __all__ = [
     'registry',
     'tool',
     'get_registry',
+    # 工具讀取器功能
+    'ToolReader',
+    'get_tools',
+    'get_tools_json',
+    'get_tools_summary',
 ]
 
