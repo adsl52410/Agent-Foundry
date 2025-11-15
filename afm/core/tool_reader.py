@@ -1,8 +1,8 @@
 """
-工具讀取器 - 為AI提供工具描述和格式轉換
+Tool Reader - Provides tool descriptions and format conversion for AI
 
-這個模組提供了一個簡單的API，讓AI可以直接了解有哪些工具可以使用，
-並能一行程式碼就獲取所有工具的標準化描述。
+This module provides a simple API that allows AI to directly understand what tools are available,
+and can get standardized descriptions of all tools with a single line of code.
 """
 import inspect
 import json
@@ -14,30 +14,30 @@ logger = logging.getLogger(__name__)
 
 
 class ToolReader:
-    """工具讀取器 - 讀取和格式化工具描述供AI使用"""
+    """Tool Reader - Reads and formats tool descriptions for AI use"""
     
     def __init__(self, registry=None):
         """
-        初始化工具讀取器
+        Initialize tool reader
         
         Args:
-            registry: 工具註冊器實例，如果為None則使用全局註冊器
+            registry: Tool registry instance, if None uses global registry
         """
         self.registry = registry or get_registry()
     
     def get_all_tools(self) -> List[str]:
-        """獲取所有已註冊的工具名稱"""
+        """Get all registered tool names"""
         return self.registry.list_tools()
     
     def get_tool_info(self, tool_name: str) -> Optional[Dict[str, Any]]:
         """
-        獲取單個工具的詳細信息
+        Get detailed information about a single tool
         
         Args:
-            tool_name: 工具名稱
+            tool_name: Tool name
             
         Returns:
-            工具信息字典，包含名稱、描述、參數等
+            Tool information dictionary containing name, description, parameters, etc.
         """
         tool_func = self.registry.get_tool(tool_name)
         if tool_func is None:
@@ -46,7 +46,7 @@ class ToolReader:
         metadata = self.registry.get_tool_metadata(tool_name) or {}
         signature = inspect.signature(tool_func)
         
-        # 解析參數
+        # Parse parameters
         parameters = {}
         for param_name, param in signature.parameters.items():
             param_info = {
@@ -73,7 +73,7 @@ class ToolReader:
         }
     
     def _get_type_name(self, annotation: Any) -> str:
-        """將類型註解轉換為字串"""
+        """Convert type annotation to string"""
         if annotation == inspect.Parameter.empty:
             return "Any"
         
@@ -87,10 +87,10 @@ class ToolReader:
     
     def to_openai_format(self) -> List[Dict[str, Any]]:
         """
-        將所有工具轉換為OpenAI Function Calling格式
+        Convert all tools to OpenAI Function Calling format
         
         Returns:
-            OpenAI function calling格式的工具列表
+            List of tools in OpenAI function calling format
         """
         tools = []
         for tool_name in self.get_all_tools():
@@ -98,19 +98,19 @@ class ToolReader:
             if tool_info is None:
                 continue
             
-            # 構建OpenAI格式的參數schema
+            # Build OpenAI format parameter schema
             properties = {}
             required = []
             
             for param_name, param_info in tool_info["parameters"].items():
                 param_type = param_info.get("type", "string")
                 
-                # 將Python類型映射到JSON Schema類型
+                # Map Python types to JSON Schema types
                 json_type = self._python_to_json_type(param_type)
                 
                 properties[param_name] = {
                     "type": json_type,
-                    "description": f"參數 {param_name}",
+                    "description": f"Parameter {param_name}",
                 }
                 
                 if param_info.get("required", False):
@@ -123,7 +123,7 @@ class ToolReader:
                 "type": "function",
                 "function": {
                     "name": tool_name,
-                    "description": tool_info["description"] or f"工具: {tool_name}",
+                    "description": tool_info["description"] or f"Tool: {tool_name}",
                     "parameters": {
                         "type": "object",
                         "properties": properties,
@@ -137,7 +137,7 @@ class ToolReader:
         return tools
     
     def _python_to_json_type(self, python_type: str) -> str:
-        """將Python類型映射到JSON Schema類型"""
+        """Map Python types to JSON Schema types"""
         type_mapping = {
             "str": "string",
             "int": "integer",
@@ -153,14 +153,14 @@ class ToolReader:
             if py_type in python_type_lower:
                 return json_type
         
-        return "string"  # 默認返回string
+        return "string"  # Default to string
     
     def to_langchain_format(self) -> List[Dict[str, Any]]:
         """
-        將所有工具轉換為LangChain格式
+        Convert all tools to LangChain format
         
         Returns:
-            LangChain格式的工具列表
+            List of tools in LangChain format
         """
         tools = []
         for tool_name in self.get_all_tools():
@@ -170,7 +170,7 @@ class ToolReader:
             
             langchain_tool = {
                 "name": tool_name,
-                "description": tool_info["description"] or f"工具: {tool_name}",
+                "description": tool_info["description"] or f"Tool: {tool_name}",
                 "parameters": tool_info["parameters"],
                 "signature": tool_info["signature"],
             }
@@ -184,10 +184,10 @@ class ToolReader:
     
     def to_simple_format(self) -> List[Dict[str, Any]]:
         """
-        將所有工具轉換為簡單格式（易於閱讀）
+        Convert all tools to simple format (easy to read)
         
         Returns:
-            簡單格式的工具列表
+            List of tools in simple format
         """
         tools = []
         for tool_name in self.get_all_tools():
@@ -214,16 +214,16 @@ class ToolReader:
     
     def to_dict(self, format_type: str = "simple") -> List[Dict[str, Any]]:
         """
-        獲取所有工具的描述（一行程式碼API）
+        Get descriptions of all tools (one-line code API)
         
         Args:
-            format_type: 格式類型，可選值：
-                - "openai": OpenAI Function Calling格式
-                - "langchain": LangChain格式
-                - "simple": 簡單格式（默認）
+            format_type: Format type, options:
+                - "openai": OpenAI Function Calling format
+                - "langchain": LangChain format
+                - "simple": Simple format (default)
         
         Returns:
-            工具描述列表
+            List of tool descriptions
         """
         format_map = {
             "openai": self.to_openai_format,
@@ -236,67 +236,67 @@ class ToolReader:
     
     def to_json(self, format_type: str = "simple", indent: int = 2) -> str:
         """
-        將工具描述轉換為JSON字串
+        Convert tool descriptions to JSON string
         
         Args:
-            format_type: 格式類型
-            indent: JSON縮排
+            format_type: Format type
+            indent: JSON indentation
         
         Returns:
-            JSON字串
+            JSON string
         """
         tools = self.to_dict(format_type)
         return json.dumps(tools, indent=indent, ensure_ascii=False)
     
     def get_tools_summary(self) -> str:
         """
-        獲取所有工具的簡要摘要（文字格式）
+        Get a brief summary of all tools (text format)
         
         Returns:
-            工具摘要文字
+            Tool summary text
         """
         tools = self.get_all_tools()
         if not tools:
-            return "目前沒有已註冊的工具"
+            return "No tools are currently registered"
         
-        summary_lines = [f"可用工具總數: {len(tools)}\n"]
+        summary_lines = [f"Total available tools: {len(tools)}\n"]
         
         for tool_name in tools:
             tool_info = self.get_tool_info(tool_name)
             if tool_info:
-                desc = tool_info["description"] or "無描述"
+                desc = tool_info["description"] or "No description"
                 params = ", ".join(tool_info["parameters"].keys())
                 summary_lines.append(
                     f"- {tool_name}: {desc}\n"
-                    f"  參數: ({params})"
+                    f"  Parameters: ({params})"
                 )
         
         return "\n".join(summary_lines)
 
 
-# 全局工具讀取器實例
+# Global tool reader instance
 _reader: Optional[ToolReader] = None
 
 
 def get_tools(format_type: str = "simple") -> List[Dict[str, Any]]:
     """
-    一行程式碼獲取所有工具的描述（主要API）
+    Get descriptions of all tools with one line of code (main API)
     
-    使用範例:
-        # 獲取簡單格式
+    Usage examples:
+        # Get simple format
         tools = get_tools()
         
-        # 獲取OpenAI格式
+        # Get OpenAI format
         tools = get_tools("openai")
         
-        # 獲取LangChain格式
+        # Get LangChain format
         tools = get_tools("langchain")
     
     Args:
-        format_type: 格式類型 ("simple", "openai", "langchain")
+        format_type: Format type ("simple", "openai", "langchain")
     
     Returns:
-        工具描述列表
+        List of tool descriptions
     """
     global _reader
     if _reader is None:
@@ -306,17 +306,17 @@ def get_tools(format_type: str = "simple") -> List[Dict[str, Any]]:
 
 def get_tools_json(format_type: str = "simple") -> str:
     """
-    一行程式碼獲取所有工具的JSON描述
+    Get JSON descriptions of all tools with one line of code
     
-    使用範例:
+    Usage example:
         tools_json = get_tools_json("openai")
-        # 可以直接傳給AI API
+        # Can be directly passed to AI API
     
     Args:
-        format_type: 格式類型
+        format_type: Format type
     
     Returns:
-        JSON字串
+        JSON string
     """
     global _reader
     if _reader is None:
@@ -326,10 +326,10 @@ def get_tools_json(format_type: str = "simple") -> str:
 
 def get_tools_summary() -> str:
     """
-    一行程式碼獲取所有工具的摘要
+    Get summary of all tools with one line of code
     
     Returns:
-        工具摘要文字
+        Tool summary text
     """
     global _reader
     if _reader is None:
@@ -337,7 +337,7 @@ def get_tools_summary() -> str:
     return _reader.get_tools_summary()
 
 
-# 導出主要功能
+# Export main functionality
 __all__ = [
     "ToolReader",
     "get_tools",

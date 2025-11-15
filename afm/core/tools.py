@@ -1,5 +1,5 @@
 """
-工具模組 - 自動導入所有註冊的工具，提供類似 LangChain 的使用體驗
+Tools module - Automatically imports all registered tools, providing a LangChain-like experience
 """
 from afm.core.tool_registry import get_registry, tool
 from afm.core.tool_reader import (
@@ -14,14 +14,14 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# 創建全局註冊器
+# Create global registry
 registry = get_registry()
 
-# 自動掃描和註冊插件
+# Auto-scan and register plugins
 _initialized = False
 
 def _auto_register_plugins():
-    """自動掃描並註冊所有插件"""
+    """Automatically scan and register all plugins"""
     global _initialized
     if _initialized:
         return
@@ -29,35 +29,35 @@ def _auto_register_plugins():
     plugin_dir = PLUGIN_DIR
     if os.path.exists(plugin_dir):
         registry.scan_and_register_plugins(plugin_dir)
-        logger.info(f"已自動註冊 {len(registry.list_tools())} 個工具")
+        logger.info(f"Automatically registered {len(registry.list_tools())} tools")
     else:
-        logger.warning(f"插件目錄不存在: {plugin_dir}")
+        logger.warning(f"Plugin directory does not exist: {plugin_dir}")
     
     _initialized = True
 
-# 自動初始化
+# Auto-initialize
 _auto_register_plugins()
 
-# 動態創建模組級別的工具函數
+# Dynamically create module-level tool functions
 def __getattr__(name: str):
     """
-    魔法方法：允許直接通過模組訪問工具
+    Magic method: Allows direct access to tools through the module
     
-    例如:
+    Example:
     from afm.core.tools import ocr_demo_extract_text
     result = ocr_demo_extract_text(image_path="test.png")
     """
     tool_func = registry.get_tool(name)
     if tool_func is not None:
         return tool_func
-    raise AttributeError(f"模組 '{__name__}' 沒有工具 '{name}'")
+    raise AttributeError(f"Module '{__name__}' has no tool '{name}'")
 
-# 導出常用功能
+# Export common functionality
 __all__ = [
     'registry',
     'tool',
     'get_registry',
-    # 工具讀取器功能
+    # Tool reader functionality
     'ToolReader',
     'get_tools',
     'get_tools_json',

@@ -1,18 +1,18 @@
-# 工具自動註冊系統使用指南
+# Tool Auto-Registration System Usage Guide
 
-## 📋 概述
+## 📋 Overview
 
-Agent Foundry 現在支援類似 LangChain 的工具自動註冊機制。插件會自動被掃描和註冊，變成可直接調用的方法。
+Agent Foundry now supports a tool auto-registration mechanism similar to LangChain. Plugins are automatically scanned and registered, becoming directly callable methods.
 
-## 🚀 使用方式
+## 🚀 Usage Methods
 
-### 方式 1: 直接導入工具（推薦，類似 LangChain）
+### Method 1: Direct Tool Import (Recommended, Similar to LangChain)
 
 ```python
-# 自動導入已註冊的工具
+# Automatically import registered tools
 from afm.core.tools import ocr_demo_extract_text
 
-# 直接使用，就像普通函數
+# Use directly, just like a regular function
 result = ocr_demo_extract_text(
     image_path="test.png",
     language="chi_tra+eng",
@@ -22,125 +22,125 @@ result = ocr_demo_extract_text(
 print(result)
 ```
 
-### 方式 2: 通過註冊器訪問
+### Method 2: Access via Registry
 
 ```python
 from afm.core.tools import registry
 
-# 列出所有工具
+# List all tools
 tools = registry.list_tools()
-print(f"可用工具: {tools}")
+print(f"Available tools: {tools}")
 
-# 獲取工具
+# Get tool
 ocr_tool = registry.get_tool("ocr_demo_extract_text")
 
-# 調用工具
+# Call tool
 result = ocr_tool(image_path="test.png")
 ```
 
-### 方式 3: 通過註冊器屬性訪問
+### Method 3: Access via Registry Attributes
 
 ```python
 from afm.core.tools import registry
 
-# 直接通過屬性訪問（魔法方法）
+# Direct access via attributes (magic methods)
 result = registry.ocr_demo_extract_text(image_path="test.png")
 ```
 
-### 方式 4: 動態調用
+### Method 4: Dynamic Call
 
 ```python
 from afm.core.tools import registry
 
-# 動態調用工具
+# Dynamically call tool
 tool_name = "ocr_demo_extract_text"
 result = registry.call_tool(tool_name, image_path="test.png")
 ```
 
-## 📦 插件自動註冊
+## 📦 Plugin Auto-Registration
 
-### 自動掃描
+### Auto-Scanning
 
-系統會自動掃描 `afm/plugins/` 目錄下的所有插件，並將符合條件的類別方法註冊為工具。
+The system automatically scans all plugins in the `afm/plugins/` directory and registers eligible class methods as tools.
 
-### 支援的插件結構
+### Supported Plugin Structures
 
-#### 1. 服務類別（自動註冊 extract_text 方法）
+#### 1. Service Class (Auto-register extract_text method)
 
 ```python
 # afm/plugins/ocr_demo/plugin.py
 class OCRService:
     def initialize(self):
-        # 初始化邏輯
+        # Initialization logic
         pass
     
     def extract_text(self, image_path: str, **kwargs):
-        # OCR 邏輯
+        # OCR logic
         return {"success": True, "data": {...}}
 ```
 
-**自動註冊為**: `ocr_demo_extract_text`
+**Auto-registered as**: `ocr_demo_extract_text`
 
-#### 2. 使用 @tool 裝飾器
+#### 2. Using @tool Decorator
 
 ```python
 from afm.core.tool_registry import tool
 
-@tool(name="my_custom_tool", description="我的自定義工具")
+@tool(name="my_custom_tool", description="My custom tool")
 def my_function(arg1: str, arg2: int = 10) -> str:
-    """工具描述"""
-    return f"處理結果: {arg1} {arg2}"
+    """Tool description"""
+    return f"Processing result: {arg1} {arg2}"
 ```
 
-**註冊為**: `my_custom_tool`
+**Registered as**: `my_custom_tool`
 
-## 🔍 查詢工具
+## 🔍 Query Tools
 
-### 列出所有工具
+### List All Tools
 
 ```python
 from afm.core.tools import registry
 
-# 列出所有工具名稱
+# List all tool names
 tools = registry.list_tools()
 for tool_name in tools:
     print(f"- {tool_name}")
 ```
 
-### 獲取工具元數據
+### Get Tool Metadata
 
 ```python
 from afm.core.tools import registry
 
-# 獲取工具信息
+# Get tool information
 metadata = registry.get_tool_metadata("ocr_demo_extract_text")
-print(f"描述: {metadata['description']}")
-print(f"簽名: {metadata['signature']}")
-print(f"插件: {metadata.get('plugin')}")
+print(f"Description: {metadata['description']}")
+print(f"Signature: {metadata['signature']}")
+print(f"Plugin: {metadata.get('plugin')}")
 ```
 
-## 📝 完整使用範例
+## 📝 Complete Usage Examples
 
-### 範例 1: 基本使用
+### Example 1: Basic Usage
 
 ```python
 from afm.core.tools import ocr_demo_extract_text
 
-# 簡單使用
+# Simple usage
 result = ocr_demo_extract_text(image_path="test.png")
 
 if result["success"]:
-    print(f"識別文字: {result['data']['text']}")
-    print(f"置信度: {result['data']['confidence']:.2%}")
+    print(f"Recognized text: {result['data']['text']}")
+    print(f"Confidence: {result['data']['confidence']:.2%}")
 ```
 
-### 範例 2: 批次處理
+### Example 2: Batch Processing
 
 ```python
 from afm.core.tools import ocr_demo_extract_text
 from pathlib import Path
 
-# 批次處理多張圖片
+# Batch process multiple images
 image_dir = Path("./images")
 for image_file in image_dir.glob("*.png"):
     result = ocr_demo_extract_text(
@@ -151,77 +151,77 @@ for image_file in image_dir.glob("*.png"):
     print(f"{image_file.name}: {result['success']}")
 ```
 
-### 範例 3: 動態工具選擇
+### Example 3: Dynamic Tool Selection
 
 ```python
 from afm.core.tools import registry
 
-# 列出所有 OCR 相關工具
+# List all OCR-related tools
 ocr_tools = [name for name in registry.list_tools() if 'ocr' in name.lower()]
 
-# 使用第一個 OCR 工具
+# Use the first OCR tool
 if ocr_tools:
     tool_name = ocr_tools[0]
     result = registry.call_tool(tool_name, image_path="test.png")
     print(result)
 ```
 
-### 範例 4: 整合到現有程式
+### Example 4: Integration into Existing Program
 
 ```python
 from afm.core.tools import registry
 
 class MyApp:
     def __init__(self):
-        # 初始化時檢查工具是否可用
+        # Check if tool is available during initialization
         self.ocr_tool = registry.get_tool("ocr_demo_extract_text")
         if self.ocr_tool is None:
-            raise RuntimeError("OCR 工具未找到")
+            raise RuntimeError("OCR tool not found")
     
     def process_images(self, image_paths: list):
-        """處理多張圖片"""
+        """Process multiple images"""
         results = []
         for path in image_paths:
             result = self.ocr_tool(image_path=path)
             results.append(result)
         return results
 
-# 使用
+# Usage
 app = MyApp()
 results = app.process_images(["img1.png", "img2.png"])
 ```
 
-## 🎯 工具命名規則
+## 🎯 Tool Naming Rules
 
-- **服務類別的 extract_text 方法**: `{plugin_name}_extract_text`
-  - 例如: `ocr_demo_extract_text`
+- **Service class extract_text method**: `{plugin_name}_extract_text`
+  - Example: `ocr_demo_extract_text`
   
-- **使用 @tool 裝飾器的函數**: 使用裝飾器指定的名稱，或函數名
-  - 例如: `@tool(name="my_tool")` -> `my_tool`
+- **Functions using @tool decorator**: Use the name specified in the decorator, or the function name
+  - Example: `@tool(name="my_tool")` -> `my_tool`
 
-## ⚙️ 自定義工具
+## ⚙️ Custom Tools
 
-### 創建自定義工具
+### Create Custom Tool
 
 ```python
-# 在你的插件或模組中
+# In your plugin or module
 from afm.core.tool_registry import tool, get_registry
 
-@tool(name="calculate_sum", description="計算兩個數字的和")
+@tool(name="calculate_sum", description="Calculate the sum of two numbers")
 def add_numbers(a: int, b: int) -> int:
-    """計算兩個數字的和"""
+    """Calculate the sum of two numbers"""
     return a + b
 
-# 或者手動註冊
+# Or manually register
 registry = get_registry()
 registry.register_tool(
     name="multiply",
     func=lambda x, y: x * y,
-    description="計算兩個數字的乘積"
+    description="Calculate the product of two numbers"
 )
 ```
 
-### 在插件中使用
+### Use in Plugins
 
 ```python
 # afm/plugins/my_plugin/plugin.py
@@ -230,32 +230,32 @@ from afm.core.tool_registry import tool
 class MyService:
     @tool(name="my_service_process")
     def process(self, data: str) -> str:
-        """處理數據"""
-        return f"處理: {data}"
+        """Process data"""
+        return f"Processed: {data}"
 ```
 
-## 🔧 高級用法
+## 🔧 Advanced Usage
 
-### 禁用自動掃描
+### Disable Auto-Scanning
 
 ```python
 from afm.core.tool_registry import ToolRegistry
 
-# 創建新的註冊器（不自動掃描）
+# Create new registry (no auto-scanning)
 custom_registry = ToolRegistry()
 
-# 手動註冊工具
+# Manually register tools
 custom_registry.register_tool("my_tool", my_function)
 ```
 
-### 批量註冊
+### Batch Registration
 
 ```python
 from afm.core.tool_registry import get_registry
 
 registry = get_registry()
 
-# 批量註冊多個工具
+# Batch register multiple tools
 tools = {
     "tool1": func1,
     "tool2": func2,
@@ -266,52 +266,51 @@ for name, func in tools.items():
     registry.register_tool(name, func)
 ```
 
-## 📚 與 LangChain 的對比
+## 📚 Comparison with LangChain
 
-| 特性 | LangChain | Agent Foundry |
-|------|-----------|---------------|
-| 工具定義 | 使用 @tool 裝飾器 | 自動掃描或 @tool 裝飾器 |
-| 導入方式 | `from langchain.tools import tool_name` | `from afm.core.tools import tool_name` |
-| 自動掃描 | 需要手動註冊 | 自動掃描插件目錄 |
-| 服務類別 | 需要手動包裝 | 自動識別和註冊 |
+| Feature | LangChain | Agent Foundry |
+|---------|-----------|---------------|
+| Tool Definition | Use @tool decorator | Auto-scan or @tool decorator |
+| Import Method | `from langchain.tools import tool_name` | `from afm.core.tools import tool_name` |
+| Auto-Scanning | Requires manual registration | Auto-scan plugin directory |
+| Service Classes | Requires manual wrapping | Auto-identify and register |
 
-## 🐛 故障排除
+## 🐛 Troubleshooting
 
-### 工具未找到
+### Tool Not Found
 
 ```python
-# 檢查工具是否存在
+# Check if tool exists
 from afm.core.tools import registry
 
 if "ocr_demo_extract_text" in registry.list_tools():
-    print("工具已註冊")
+    print("Tool is registered")
 else:
-    print("工具未註冊，檢查插件目錄")
+    print("Tool not registered, check plugin directory")
 ```
 
-### 插件未被自動掃描
+### Plugin Not Auto-Scanned
 
-1. 確保插件目錄結構正確: `afm/plugins/{plugin_name}/plugin.py`
-2. 確保插件包含可識別的類別或函數
-3. 檢查日誌中的錯誤訊息
+1. Ensure plugin directory structure is correct: `afm/plugins/{plugin_name}/plugin.py`
+2. Ensure plugin contains identifiable classes or functions
+3. Check error messages in logs
 
-### 工具調用失敗
+### Tool Call Failed
 
 ```python
 try:
     result = ocr_demo_extract_text(image_path="test.png")
 except Exception as e:
-    print(f"工具調用失敗: {e}")
-    # 檢查工具元數據
+    print(f"Tool call failed: {e}")
+    # Check tool metadata
     metadata = registry.get_tool_metadata("ocr_demo_extract_text")
-    print(f"工具簽名: {metadata['signature']}")
+    print(f"Tool signature: {metadata['signature']}")
 ```
 
-## 💡 最佳實踐
+## 💡 Best Practices
 
-1. **使用明確的工具名稱**: 確保工具名稱清晰且唯一
-2. **提供完整的文檔字符串**: 工具描述會自動從 `__doc__` 提取
-3. **處理錯誤**: 工具應該返回標準化的結果格式
-4. **重用服務實例**: 服務類別會自動使用單例模式，提高性能
-5. **類型提示**: 使用類型提示讓工具簽名更清晰
-
+1. **Use clear tool names**: Ensure tool names are clear and unique
+2. **Provide complete docstrings**: Tool descriptions are automatically extracted from `__doc__`
+3. **Handle errors**: Tools should return standardized result formats
+4. **Reuse service instances**: Service classes automatically use singleton pattern for better performance
+5. **Type hints**: Use type hints to make tool signatures clearer

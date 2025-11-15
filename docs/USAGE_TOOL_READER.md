@@ -1,30 +1,30 @@
-# 工具讀取器使用指南
+# Tool Reader Usage Guide
 
-## 📋 概述
+## 📋 Overview
 
-工具讀取器 (`tool_reader`) 提供了一個簡單的API，讓AI可以直接了解有哪些工具可以使用，並能**一行程式碼**就獲取所有工具的標準化描述。
+The tool reader (`tool_reader`) provides a simple API that allows AI to directly understand what tools are available and get standardized descriptions of all tools with **just one line of code**.
 
-## 🚀 快速開始
+## 🚀 Quick Start
 
-### 一行程式碼獲取所有工具
+### Get All Tools with One Line of Code
 
 ```python
 from afm.core.tools import get_tools
 
-# 獲取所有工具的簡單格式描述
+# Get simple format descriptions of all tools
 tools = get_tools()
 print(tools)
 ```
 
-### 獲取OpenAI Function Calling格式
+### Get OpenAI Function Calling Format
 
 ```python
 from afm.core.tools import get_tools
 
-# 獲取OpenAI格式，可直接用於OpenAI API
+# Get OpenAI format, can be directly used with OpenAI API
 openai_tools = get_tools("openai")
 
-# 使用範例：傳給OpenAI API
+# Usage example: pass to OpenAI API
 # client.chat.completions.create(
 #     model="gpt-4",
 #     messages=[...],
@@ -32,35 +32,35 @@ openai_tools = get_tools("openai")
 # )
 ```
 
-### 獲取JSON格式
+### Get JSON Format
 
 ```python
 from afm.core.tools import get_tools_json
 
-# 獲取JSON字串
+# Get JSON string
 tools_json = get_tools_json("openai")
 print(tools_json)
 ```
 
-### 獲取工具摘要
+### Get Tool Summary
 
 ```python
 from afm.core.tools import get_tools_summary
 
-# 獲取文字摘要
+# Get text summary
 summary = get_tools_summary()
 print(summary)
 ```
 
-## 📦 支援的格式
+## 📦 Supported Formats
 
-### 1. Simple格式（默認）
+### 1. Simple Format (Default)
 
-簡單易讀的格式，適合快速查看：
+A simple and readable format, suitable for quick viewing:
 
 ```python
 tools = get_tools("simple")
-# 輸出:
+# Output:
 # [
 #   {
 #     "name": "ocr_demo_extract_text",
@@ -74,13 +74,13 @@ tools = get_tools("simple")
 # ]
 ```
 
-### 2. OpenAI Function Calling格式
+### 2. OpenAI Function Calling Format
 
-符合OpenAI API規範的格式：
+Format compliant with OpenAI API specifications:
 
 ```python
 tools = get_tools("openai")
-# 輸出:
+# Output:
 # [
 #   {
 #     "type": "function",
@@ -92,7 +92,7 @@ tools = get_tools("openai")
 #         "properties": {
 #           "image_path": {
 #             "type": "string",
-#             "description": "參數 image_path"
+#             "description": "Parameter image_path"
 #           }
 #         },
 #         "required": ["image_path"]
@@ -102,13 +102,13 @@ tools = get_tools("openai")
 # ]
 ```
 
-### 3. LangChain格式
+### 3. LangChain Format
 
-適合LangChain框架使用的格式：
+Format suitable for use with the LangChain framework:
 
 ```python
 tools = get_tools("langchain")
-# 輸出:
+# Output:
 # [
 #   {
 #     "name": "ocr_demo_extract_text",
@@ -120,9 +120,9 @@ tools = get_tools("langchain")
 # ]
 ```
 
-## 💡 完整使用範例
+## 💡 Complete Usage Examples
 
-### 範例1: 整合到OpenAI API
+### Example 1: Integration with OpenAI API
 
 ```python
 from openai import OpenAI
@@ -130,87 +130,87 @@ from afm.core.tools import get_tools
 
 client = OpenAI()
 
-# 獲取所有工具
+# Get all tools
 tools = get_tools("openai")
 
-# 使用工具
+# Use tools
 response = client.chat.completions.create(
     model="gpt-4",
     messages=[
-        {"role": "user", "content": "幫我識別這張圖片中的文字: test.png"}
+        {"role": "user", "content": "Help me identify the text in this image: test.png"}
     ],
     tools=tools,
     tool_choice="auto"
 )
 
-# 處理工具調用
+# Handle tool calls
 for tool_call in response.choices[0].message.tool_calls:
     tool_name = tool_call.function.name
-    # 調用對應的工具
+    # Call the corresponding tool
     from afm.core.tools import registry
     result = registry.call_tool(tool_name, **eval(tool_call.function.arguments))
 ```
 
-### 範例2: 動態工具選擇
+### Example 2: Dynamic Tool Selection
 
 ```python
 from afm.core.tools import get_tools, registry
 
-# 獲取所有工具描述
+# Get all tool descriptions
 tools = get_tools("simple")
 
-# 讓用戶選擇工具
-print("可用工具:")
+# Let user select a tool
+print("Available tools:")
 for i, tool in enumerate(tools, 1):
     print(f"{i}. {tool['name']}: {tool['description']}")
 
-# 根據用戶選擇調用工具
-choice = int(input("選擇工具編號: ")) - 1
+# Call tool based on user selection
+choice = int(input("Select tool number: ")) - 1
 selected_tool = tools[choice]
 
-# 調用工具
+# Call tool
 result = registry.call_tool(selected_tool["name"], image_path="test.png")
 print(result)
 ```
 
-### 範例3: 工具文檔生成
+### Example 3: Tool Documentation Generation
 
 ```python
 from afm.core.tools import get_tools_summary, get_tools_json
 
-# 生成工具文檔
+# Generate tool documentation
 summary = get_tools_summary()
-print("=== 工具摘要 ===")
+print("=== Tool Summary ===")
 print(summary)
 
-# 生成JSON文檔
+# Generate JSON documentation
 tools_json = get_tools_json("simple", indent=2)
 with open("tools_documentation.json", "w", encoding="utf-8") as f:
     f.write(tools_json)
 ```
 
-### 範例4: 高級使用 - 自定義讀取器
+### Example 4: Advanced Usage - Custom Reader
 
 ```python
 from afm.core.tool_reader import ToolReader
 from afm.core.tool_registry import get_registry
 
-# 創建自定義讀取器
+# Create custom reader
 registry = get_registry()
 reader = ToolReader(registry)
 
-# 獲取特定工具信息
+# Get specific tool information
 tool_info = reader.get_tool_info("ocr_demo_extract_text")
-print(f"工具名稱: {tool_info['name']}")
-print(f"描述: {tool_info['description']}")
-print(f"參數: {tool_info['parameters']}")
+print(f"Tool name: {tool_info['name']}")
+print(f"Description: {tool_info['description']}")
+print(f"Parameters: {tool_info['parameters']}")
 
-# 獲取所有工具名稱
+# Get all tool names
 all_tool_names = reader.get_all_tools()
-print(f"所有工具: {all_tool_names}")
+print(f"All tools: {all_tool_names}")
 ```
 
-## 🎯 與AI框架整合
+## 🎯 Integration with AI Frameworks
 
 ### OpenAI
 
@@ -221,7 +221,7 @@ from afm.core.tools import get_tools
 client = OpenAI()
 tools = get_tools("openai")
 
-# 直接使用
+# Direct usage
 response = client.chat.completions.create(
     model="gpt-4",
     messages=[{"role": "user", "content": "..."}],
@@ -236,10 +236,10 @@ from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_openai import ChatOpenAI
 from afm.core.tools import get_tools, registry
 
-# 獲取工具描述
+# Get tool descriptions
 tools_desc = get_tools("langchain")
 
-# 創建LangChain工具包裝器
+# Create LangChain tool wrappers
 from langchain.tools import Tool
 
 langchain_tools = []
@@ -251,7 +251,7 @@ for tool_desc in tools_desc:
     )
     langchain_tools.append(tool)
 
-# 使用工具
+# Use tools
 llm = ChatOpenAI(model="gpt-4")
 agent = create_openai_tools_agent(llm, langchain_tools, ...)
 ```
@@ -264,7 +264,7 @@ from afm.core.tools import get_tools
 
 client = anthropic.Anthropic()
 
-# 轉換為Claude格式
+# Convert to Claude format
 tools = get_tools("openai")
 claude_tools = [tool["function"] for tool in tools]
 
@@ -275,39 +275,39 @@ response = client.messages.create(
 )
 ```
 
-## 📊 輸出格式對比
+## 📊 Output Format Comparison
 
-| 格式 | 用途 | 特點 |
-|------|------|------|
-| `simple` | 快速查看、文檔 | 易讀、包含使用範例 |
-| `openai` | OpenAI API | 符合OpenAI規範、可直接使用 |
-| `langchain` | LangChain框架 | 包含完整元數據、簽名信息 |
+| Format | Use Case | Features |
+|--------|----------|----------|
+| `simple` | Quick viewing, documentation | Easy to read, includes usage examples |
+| `openai` | OpenAI API | Compliant with OpenAI specifications, can be used directly |
+| `langchain` | LangChain framework | Includes complete metadata, signature information |
 
-## 🔧 進階功能
+## 🔧 Advanced Features
 
-### 過濾工具
+### Filter Tools
 
 ```python
 from afm.core.tools import get_tools
 
-# 獲取所有工具
+# Get all tools
 all_tools = get_tools("simple")
 
-# 過濾OCR相關工具
+# Filter OCR-related tools
 ocr_tools = [t for t in all_tools if "ocr" in t["name"].lower()]
 
-# 過濾特定插件的工具
+# Filter tools from specific plugin
 plugin_tools = [t for t in all_tools if t.get("plugin") == "ocr_demo"]
 ```
 
-### 工具統計
+### Tool Statistics
 
 ```python
 from afm.core.tools import get_tools
 
 tools = get_tools("simple")
 
-# 統計信息
+# Statistics
 total_tools = len(tools)
 plugins = set(t.get("plugin") for t in tools if t.get("plugin"))
 required_params = sum(
@@ -315,50 +315,49 @@ required_params = sum(
     for t in tools
 )
 
-print(f"總工具數: {total_tools}")
-print(f"插件數: {len(plugins)}")
-print(f"必需參數總數: {required_params}")
+print(f"Total tools: {total_tools}")
+print(f"Plugins: {len(plugins)}")
+print(f"Total required parameters: {required_params}")
 ```
 
-## 🐛 故障排除
+## 🐛 Troubleshooting
 
-### 沒有工具可用
+### No Tools Available
 
 ```python
 from afm.core.tools import get_tools, registry
 
-# 檢查工具是否已註冊
+# Check if tools are registered
 if len(registry.list_tools()) == 0:
-    print("沒有已註冊的工具，請確保插件已正確安裝")
+    print("No registered tools, please ensure plugins are properly installed")
 else:
     tools = get_tools()
-    print(f"找到 {len(tools)} 個工具")
+    print(f"Found {len(tools)} tools")
 ```
 
-### 工具格式錯誤
+### Tool Format Error
 
 ```python
 from afm.core.tools import get_tools_json
 
 try:
     tools_json = get_tools_json("openai")
-    # 驗證JSON格式
+    # Validate JSON format
     import json
     json.loads(tools_json)
-    print("JSON格式正確")
+    print("JSON format is correct")
 except Exception as e:
-    print(f"錯誤: {e}")
+    print(f"Error: {e}")
 ```
 
-## 💡 最佳實踐
+## 💡 Best Practices
 
-1. **使用適當的格式**: 根據你的AI框架選擇對應格式
-2. **緩存工具描述**: 工具描述不會頻繁變化，可以緩存
-3. **錯誤處理**: 始終檢查工具是否存在再調用
-4. **文檔化**: 使用 `get_tools_summary()` 生成工具文檔
+1. **Use appropriate format**: Choose the corresponding format based on your AI framework
+2. **Cache tool descriptions**: Tool descriptions don't change frequently, can be cached
+3. **Error handling**: Always check if tool exists before calling
+4. **Documentation**: Use `get_tools_summary()` to generate tool documentation
 
-## 📚 相關文檔
+## 📚 Related Documentation
 
-- [工具註冊系統使用指南](./USAGE_TOOL_REGISTRY.md)
-- [插件開發指南](./PLUGIN_GUIDE.md) (如果存在)
-
+- [Tool Registry System Usage Guide](./USAGE_TOOL_REGISTRY.md)
+- [Plugin Development Guide](./PLUGIN_GUIDE.md) (if exists)
