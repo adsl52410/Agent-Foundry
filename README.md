@@ -28,46 +28,46 @@ Agent Foundry is an **open-source toolbox and plugin ecosystem** for building, s
 
 ## ⚡ Quick Start  
 
-### 環境設定
+### Environment Setup
 
 ```bash
-# 創建並啟動虛擬環境
+# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# 安裝依賴
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 基本使用
+### Basic Usage
 
 ```bash
-# 啟動虛擬環境（每次使用前）
+# Activate virtual environment (before each use)
 source venv/bin/activate
 
-# 上傳插件到遠端 registry（桌面資料夾）
+# Publish plugin to remote registry (Desktop folder)
 python3 -m afm.cli publish hello_world
 
-# 查看遠端可用的插件
+# View available plugins in remote registry
 python3 -m afm.cli remote-list
 
-# 從遠端安裝插件
+# Install plugin from remote
 python3 -m afm.cli install hello_world
 
-# 查看已安裝的插件
+# List installed plugins
 python3 -m afm.cli list
 
-# 執行插件
-python3 -m afm.cli run hello_world --args "你的參數"
+# Run plugin
+python3 -m afm.cli run hello_world --args "your parameters"
 
-# 更新插件到最新版本
+# Update plugin to latest version
 python3 -m afm.cli update hello_world
 
-# 生成鎖定檔
+# Generate lockfile
 python3 -m afm.cli lock
 ```
 
-> **注意**：遠端 registry 預設位置在 `~/Desktop/af-registry/`，可在 `afm/config/settings.py` 中修改。
+> **Note**: Remote registry default location is `~/Desktop/af-registry/`, can be modified in `afm/config/settings.py`.
 
 ---
 
@@ -126,38 +126,38 @@ sha256  agent_foundry_ocr_tesseract-0.4.2-py3-none-any.whl  a7d2...9f
 
 ### 4. Publish to the registry
 
-使用 CLI 上傳插件到遠端 registry：
+Use CLI to upload plugin to remote registry:
 
 ```bash
-# 上傳插件（自動讀取 manifest.json 中的版本）
+# Publish plugin (automatically reads version from manifest.json)
 python3 -m afm.cli publish ocr.tesseract
 
-# 或指定版本
+# Or specify version
 python3 -m afm.cli publish ocr.tesseract --version 0.4.2
 ```
 
-插件會自動上傳到 `~/Desktop/af-registry/plugins/ocr.tesseract/0.4.2/`，並更新 `index.json`。
+Plugin will be automatically uploaded to `~/Desktop/af-registry/plugins/ocr.tesseract/0.4.2/` and `index.json` will be updated.
 
 ### 5. Install and use the plugin
 
 ```bash
-# 從遠端安裝
+# Install from remote
 python3 -m afm.cli install ocr.tesseract
 
-# 或安裝特定版本
+# Or install specific version
 python3 -m afm.cli install ocr.tesseract --version 0.4.2
 
-# 執行插件
+# Run plugin
 python3 -m afm.cli run ocr.tesseract --args '{"image_path": "sample.png"}'
 ```
 
 ### 6. Plugin Registry Structure
 
-遠端 registry 結構（預設在 `~/Desktop/af-registry/`）：
+Remote registry structure (default at `~/Desktop/af-registry/`):
 
 ```
 af-registry/
-├── index.json              # 插件索引，記錄所有可用插件和版本
+├── index.json              # Plugin index, records all available plugins and versions
 └── plugins/
     └── {plugin_name}/
         └── {version}/
@@ -165,37 +165,37 @@ af-registry/
             └── manifest.json
 ```
 
-本地安裝的插件位於 `afm/plugins/{plugin_name}/`，註冊表資訊在 `data/registry.json`。
+Locally installed plugins are located at `afm/plugins/{plugin_name}/`, registry information is in `data/registry.json`.
 
 ---
 
-## 📚 CLI 命令參考
+## 📚 CLI Command Reference
 
-### 插件管理
+### Plugin Management
 
-- `install <name> [--version VERSION]` - 從遠端 registry 安裝插件（未指定版本時自動使用最新版本）
-- `list` - 列出已安裝的插件
-- `uninstall <name>` - 解除安裝插件
-- `update <name> [--version VERSION]` - 更新插件（未指定版本時自動檢查並更新到最新版本）
-- `run <name> [--args ARGS]` - 執行插件
+- `install <name> [--version VERSION]` - Install plugin from remote registry (automatically uses latest version if not specified)
+- `list` - List installed plugins
+- `uninstall <name>` - Uninstall plugin
+- `update <name> [--version VERSION]` - Update plugin (automatically checks and updates to latest version if not specified)
+- `run <name> [--args ARGS]` - Run plugin
 
-### Registry 操作
+### Registry Operations
 
-- `publish <name> [--version VERSION]` - 上傳本地插件到遠端 registry
-- `remote-list` - 列出遠端 registry 中所有可用的插件
-- `lock` - 重新生成鎖定檔（固定當前所有插件的確切版本）
+- `publish <name> [--version VERSION]` - Upload local plugin to remote registry
+- `remote-list` - List all available plugins in remote registry
+- `lock` - Regenerate lockfile (fix exact versions of all current plugins)
 
-### 範例
+### Examples
 
 ```bash
-# 完整工作流程
-python3 -m afm.cli publish my_plugin          # 上傳插件
-python3 -m afm.cli remote-list                # 查看遠端插件
-python3 -m afm.cli install my_plugin          # 安裝插件
-python3 -m afm.cli list                        # 查看已安裝
-python3 -m afm.cli run my_plugin --args "test" # 執行插件
-python3 -m afm.cli update my_plugin            # 更新到最新版本
-python3 -m afm.cli lock                        # 生成鎖定檔
+# Complete workflow
+python3 -m afm.cli publish my_plugin          # Publish plugin
+python3 -m afm.cli remote-list                # View remote plugins
+python3 -m afm.cli install my_plugin          # Install plugin
+python3 -m afm.cli list                        # View installed
+python3 -m afm.cli run my_plugin --args "test" # Run plugin
+python3 -m afm.cli update my_plugin            # Update to latest version
+python3 -m afm.cli lock                        # Generate lockfile
 ```
 
 ## 🤝 How to Contribute

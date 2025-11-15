@@ -93,33 +93,33 @@ def write_lockfile():
 
 
 def _download_from_remote(name, version):
-    """從遠端 registry 下載插件到本地"""
+    """Download plugin from remote registry to local"""
     remote_plugin_dir = os.path.join(REMOTE_PLUGINS_DIR, name, version)
     if not os.path.exists(remote_plugin_dir):
         return False
     
-    # 檢查遠端是否有必要的檔案
+    # Check if remote has necessary files
     remote_plugin_file = os.path.join(remote_plugin_dir, "plugin.py")
     remote_manifest_file = os.path.join(remote_plugin_dir, "manifest.json")
     
     if not os.path.exists(remote_plugin_file):
         return False
     
-    # 複製到本地
+    # Copy to local
     local_plugin_dir = f"{PLUGIN_DIR}/{name}"
     os.makedirs(local_plugin_dir, exist_ok=True)
     
-    # 複製 plugin.py
+    # Copy plugin.py
     shutil.copy2(remote_plugin_file, os.path.join(local_plugin_dir, "plugin.py"))
     
-    # 複製 manifest.json（如果存在）
+    # Copy manifest.json (if exists)
     if os.path.exists(remote_manifest_file):
         shutil.copy2(remote_manifest_file, os.path.join(local_plugin_dir, "manifest.json"))
     else:
-        # 如果遠端沒有 manifest，從遠端目錄名稱推斷版本
+        # If remote doesn't have manifest, infer version from remote directory name
         _ensure_manifest(local_plugin_dir, name, version)
     
-    # 複製其他檔案（如果有的話）
+    # Copy other files (if any)
     for item in os.listdir(remote_plugin_dir):
         remote_item_path = os.path.join(remote_plugin_dir, item)
         if os.path.isfile(remote_item_path) and item not in ["plugin.py", "manifest.json"]:
@@ -129,12 +129,12 @@ def _download_from_remote(name, version):
 
 
 def install_plugin(name, version=None):
-    """安裝插件：優先從遠端 registry 下載，否則使用本地模擬"""
-    # 如果沒有指定版本，嘗試從遠端 index 查找最新版本
+    """Install plugin: prioritize downloading from remote registry, otherwise use local simulation"""
+    # If version is not specified, try to find latest version from remote index
     if version is None:
         remote_index = _read_json(REMOTE_INDEX_PATH, {})
         if name in remote_index:
-            # 取得最新版本
+            # Get latest version
             versions = remote_index[name].get("versions", [])
             if versions:
                 version = max(versions, key=lambda v: _parse_version_for_sort(v))
@@ -143,13 +143,13 @@ def install_plugin(name, version=None):
         else:
             version = "0.1"
     
-    # 嘗試從遠端下載
+    # Try to download from remote
     downloaded = _download_from_remote(name, version)
     
     if downloaded:
         console.print(f"📥 Downloaded plugin from remote: {name}@{version}", style="green")
     else:
-        # 如果遠端沒有，使用本地模擬（向後兼容）
+        # If remote doesn't have it, use local simulation (backward compatibility)
         console.print(f"⚠️ Plugin not found in remote registry, using local simulation: {name}@{version}", style="yellow")
         plugin_dir = f"{PLUGIN_DIR}/{name}"
         os.makedirs(plugin_dir, exist_ok=True)
@@ -171,7 +171,7 @@ def install_plugin(name, version=None):
 
 
 def _parse_version_for_sort(version_str):
-    """將版本字串轉換為可排序的元組"""
+    """Convert version string to sortable tuple"""
     try:
         parts = version_str.split(".")
         return tuple(int(p) for p in parts)
@@ -205,7 +205,7 @@ def update_plugin(name, target_version=None):
         raise RuntimeError(f"Plugin not installed: {name}")
     current = str(registry[name].get("version", "0"))
     
-    # 如果沒有指定版本，嘗試從遠端取得最新版本
+    # If version is not specified, try to get latest version from remote
     if target_version is None:
         remote_index = _read_json(REMOTE_INDEX_PATH, {})
         if name in remote_index:
@@ -231,13 +231,13 @@ def update_plugin(name, target_version=None):
         console.print(f"ℹ️ {name} already at {current}", style="yellow")
         return
     
-    # 嘗試從遠端下載新版本
+    # Try to download new version from remote
     downloaded = _download_from_remote(name, version)
     
     if downloaded:
         console.print(f"📥 Downloaded updated version from remote: {name}@{version}", style="green")
     else:
-        # 如果遠端沒有，使用本地模擬（向後兼容）
+        # If remote doesn't have it, use local simulation (backward compatibility)
         console.print(f"⚠️ Updated version not found in remote, using local simulation: {name}@{version}", style="yellow")
         plugin_dir = f"{PLUGIN_DIR}/{name}"
         if not os.path.isdir(plugin_dir):
@@ -258,21 +258,21 @@ def update_plugin(name, target_version=None):
 
 
 def publish_plugin(name, version=None):
-    """上傳本地插件到遠端 registry"""
+    """Upload local plugin to remote registry"""
     local_plugin_dir = f"{PLUGIN_DIR}/{name}"
     if not os.path.isdir(local_plugin_dir):
         raise RuntimeError(f"Plugin not found locally: {name}")
     
-    # 讀取 manifest 取得版本
+    # Read manifest to get version
     manifest = _read_json(f"{local_plugin_dir}/manifest.json", {})
     if version is None:
         version = manifest.get("version", "0.1")
     
-    # 建立遠端目錄
+    # Create remote directory
     remote_plugin_dir = os.path.join(REMOTE_PLUGINS_DIR, name, version)
     os.makedirs(remote_plugin_dir, exist_ok=True)
     
-    # 複製檔案到遠端
+    # Copy files to remote
     plugin_file = os.path.join(local_plugin_dir, "plugin.py")
     if not os.path.exists(plugin_file):
         raise RuntimeError(f"Plugin file not found: {plugin_file}")
@@ -283,13 +283,13 @@ def publish_plugin(name, version=None):
     if os.path.exists(manifest_file):
         shutil.copy2(manifest_file, os.path.join(remote_plugin_dir, "manifest.json"))
     
-    # 複製其他檔案
+    # Copy other files
     for item in os.listdir(local_plugin_dir):
         local_item_path = os.path.join(local_plugin_dir, item)
         if os.path.isfile(local_item_path) and item not in ["plugin.py", "manifest.json"]:
             shutil.copy2(local_item_path, os.path.join(remote_plugin_dir, item))
     
-    # 更新遠端 index
+    # Update remote index
     remote_index = _read_json(REMOTE_INDEX_PATH, {})
     if name not in remote_index:
         remote_index[name] = {"versions": [], "latest": version}
@@ -306,7 +306,7 @@ def publish_plugin(name, version=None):
 
 
 def list_remote_plugins():
-    """列出遠端 registry 中可用的插件"""
+    """List available plugins in remote registry"""
     remote_index = _read_json(REMOTE_INDEX_PATH, {})
     if not remote_index:
         console.print("🚫 No plugins in remote registry", style="yellow")
