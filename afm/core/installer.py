@@ -1,11 +1,23 @@
 import os, shutil, json
 from afm.config.settings import (
     REGISTRY_PATH, LOCKFILE_PATH, PLUGIN_DIR, DATA_DIR,
-    REMOTE_REGISTRY_DIR, REMOTE_PLUGINS_DIR, REMOTE_INDEX_PATH
+    REMOTE_REGISTRY_DIR, REMOTE_PLUGINS_DIR, REMOTE_INDEX_PATH,
+    PLUGIN_REGISTRY_API_URL
 )
+from afm.core.api_client import PluginRegistryAPI
 from rich.console import Console
 
 console = Console()
+
+# Initialize API client (lazy initialization)
+_api_client = None
+
+def _get_api_client():
+    """Get or create API client instance"""
+    global _api_client
+    if _api_client is None:
+        _api_client = PluginRegistryAPI(PLUGIN_REGISTRY_API_URL)
+    return _api_client
 
 
 # paths are provided by settings
@@ -93,55 +105,78 @@ def write_lockfile():
 
 
 def _download_from_remote(name, version):
-    """Download plugin from remote registry to local"""
-    remote_plugin_dir = os.path.join(REMOTE_PLUGINS_DIR, name, version)
-    if not os.path.exists(remote_plugin_dir):
-        return False
-    
-    # Check if remote has necessary files
-    remote_plugin_file = os.path.join(remote_plugin_dir, "plugin.py")
-    remote_manifest_file = os.path.join(remote_plugin_dir, "manifest.json")
-    
-    if not os.path.exists(remote_plugin_file):
-        return False
-    
-    # Copy to local
-    local_plugin_dir = f"{PLUGIN_DIR}/{name}"
-    os.makedirs(local_plugin_dir, exist_ok=True)
-    
-    # Copy plugin.py
-    shutil.copy2(remote_plugin_file, os.path.join(local_plugin_dir, "plugin.py"))
-    
-    # Copy manifest.json (if exists)
-    if os.path.exists(remote_manifest_file):
-        shutil.copy2(remote_manifest_file, os.path.join(local_plugin_dir, "manifest.json"))
-    else:
-        # If remote doesn't have manifest, infer version from remote directory name
-        _ensure_manifest(local_plugin_dir, name, version)
-    
-    # Copy other files (if any)
-    for item in os.listdir(remote_plugin_dir):
-        remote_item_path = os.path.join(remote_plugin_dir, item)
-        if os.path.isfile(remote_item_path) and item not in ["plugin.py", "manifest.json"]:
-            shutil.copy2(remote_item_path, os.path.join(local_plugin_dir, item))
-    
-    return True
+    """Download plugin from remote registry to local (using API or legacy file system)"""
+    try:
+        # Try API first
+        api_client = _get_api_client()
+        zip_data = api_client.download_plugin(name, version, format='zip')
+        
+        # Extract to local directory
+        local_plugin_dir = f"{PLUGIN_DIR}/{name}"
+        api_client.extract_zip_to_directory(zip_data, local_plugin_dir)
+        return True
+    except Exception as e:
+        # Fallback to legacy file system method
+        console.print(f"⚠️ API download failed, trying legacy method: {e}", style="dim")
+        remote_plugin_dir = os.path.join(REMOTE_PLUGINS_DIR, name, version)
+        if not os.path.exists(remote_plugin_dir):
+            return False
+        
+        # Check if remote has necessary files
+        remote_plugin_file = os.path.join(remote_plugin_dir, "plugin.py")
+        remote_manifest_file = os.path.join(remote_plugin_dir, "manifest.json")
+        
+        if not os.path.exists(remote_plugin_file):
+            return False
+        
+        # Copy to local
+        local_plugin_dir = f"{PLUGIN_DIR}/{name}"
+        os.makedirs(local_plugin_dir, exist_ok=True)
+        
+        # Copy plugin.py
+        shutil.copy2(remote_plugin_file, os.path.join(local_plugin_dir, "plugin.py"))
+        
+        # Copy manifest.json (if exists)
+        if os.path.exists(remote_manifest_file):
+            shutil.copy2(remote_manifest_file, os.path.join(local_plugin_dir, "manifest.json"))
+        else:
+            # If remote doesn't have manifest, infer version from remote directory name
+            _ensure_manifest(local_plugin_dir, name, version)
+        
+        # Copy other files (if any)
+        for item in os.listdir(remote_plugin_dir):
+            remote_item_path = os.path.join(remote_plugin_dir, item)
+            if os.path.isfile(remote_item_path) and item not in ["plugin.py", "manifest.json"]:
+                shutil.copy2(remote_item_path, os.path.join(local_plugin_dir, item))
+        
+        return True
 
 
 def install_plugin(name, version=None):
     """Install plugin: prioritize downloading from remote registry, otherwise use local simulation"""
-    # If version is not specified, try to find latest version from remote index
+    # If version is not specified, try to find latest version from remote
     if version is None:
-        remote_index = _read_json(REMOTE_INDEX_PATH, {})
-        if name in remote_index:
-            # Get latest version
-            versions = remote_index[name].get("versions", [])
+        try:
+            # Try API first
+            api_client = _get_api_client()
+            plugin_details = api_client.get_plugin_details(name)
+            # Extract latest version from plugin details
+            versions = plugin_details.get("versions", [])
             if versions:
                 version = max(versions, key=lambda v: _parse_version_for_sort(v))
             else:
                 version = "0.1"
-        else:
-            version = "0.1"
+        except Exception:
+            # Fallback to legacy file system method
+            remote_index = _read_json(REMOTE_INDEX_PATH, {})
+            if name in remote_index:
+                versions = remote_index[name].get("versions", [])
+                if versions:
+                    version = max(versions, key=lambda v: _parse_version_for_sort(v))
+                else:
+                    version = "0.1"
+            else:
+                version = "0.1"
     
     # Try to download from remote
     downloaded = _download_from_remote(name, version)
@@ -207,9 +242,11 @@ def update_plugin(name, target_version=None):
     
     # If version is not specified, try to get latest version from remote
     if target_version is None:
-        remote_index = _read_json(REMOTE_INDEX_PATH, {})
-        if name in remote_index:
-            versions = remote_index[name].get("versions", [])
+        try:
+            # Try API first
+            api_client = _get_api_client()
+            plugin_details = api_client.get_plugin_details(name)
+            versions = plugin_details.get("versions", [])
             if versions:
                 latest = max(versions, key=lambda v: _parse_version_for_sort(v))
                 if _cmp_semver(latest, current) > 0:
@@ -221,9 +258,25 @@ def update_plugin(name, target_version=None):
             else:
                 console.print(f"ℹ️ {name} already at {current}, no newer version found", style="yellow")
                 return
-        else:
-            console.print(f"ℹ️ {name} already at {current}, not found in remote registry", style="yellow")
-            return
+        except Exception:
+            # Fallback to legacy file system method
+            remote_index = _read_json(REMOTE_INDEX_PATH, {})
+            if name in remote_index:
+                versions = remote_index[name].get("versions", [])
+                if versions:
+                    latest = max(versions, key=lambda v: _parse_version_for_sort(v))
+                    if _cmp_semver(latest, current) > 0:
+                        version = latest
+                        console.print(f"📥 Found newer version in remote: {latest}", style="cyan")
+                    else:
+                        console.print(f"ℹ️ {name} already at latest version {current}", style="yellow")
+                        return
+                else:
+                    console.print(f"ℹ️ {name} already at {current}, no newer version found", style="yellow")
+                    return
+            else:
+                console.print(f"ℹ️ {name} already at {current}, not found in remote registry", style="yellow")
+                return
     else:
         version = target_version
     
@@ -258,7 +311,7 @@ def update_plugin(name, target_version=None):
 
 
 def publish_plugin(name, version=None):
-    """Upload local plugin to remote registry"""
+    """Upload local plugin to remote registry (using API or legacy file system)"""
     local_plugin_dir = f"{PLUGIN_DIR}/{name}"
     if not os.path.isdir(local_plugin_dir):
         raise RuntimeError(f"Plugin not found locally: {name}")
@@ -268,59 +321,108 @@ def publish_plugin(name, version=None):
     if version is None:
         version = manifest.get("version", "0.1")
     
-    # Create remote directory
-    remote_plugin_dir = os.path.join(REMOTE_PLUGINS_DIR, name, version)
-    os.makedirs(remote_plugin_dir, exist_ok=True)
-    
-    # Copy files to remote
-    plugin_file = os.path.join(local_plugin_dir, "plugin.py")
-    if not os.path.exists(plugin_file):
-        raise RuntimeError(f"Plugin file not found: {plugin_file}")
-    
-    shutil.copy2(plugin_file, os.path.join(remote_plugin_dir, "plugin.py"))
-    
-    manifest_file = os.path.join(local_plugin_dir, "manifest.json")
-    if os.path.exists(manifest_file):
-        shutil.copy2(manifest_file, os.path.join(remote_plugin_dir, "manifest.json"))
-    
-    # Copy other files
-    for item in os.listdir(local_plugin_dir):
-        local_item_path = os.path.join(local_plugin_dir, item)
-        if os.path.isfile(local_item_path) and item not in ["plugin.py", "manifest.json"]:
-            shutil.copy2(local_item_path, os.path.join(remote_plugin_dir, item))
-    
-    # Update remote index
-    remote_index = _read_json(REMOTE_INDEX_PATH, {})
-    if name not in remote_index:
-        remote_index[name] = {"versions": [], "latest": version}
-    
-    if version not in remote_index[name]["versions"]:
-        remote_index[name]["versions"].append(version)
-        remote_index[name]["versions"].sort(key=lambda v: _parse_version_for_sort(v), reverse=True)
-    
-    remote_index[name]["latest"] = remote_index[name]["versions"][0]
-    _write_json(REMOTE_INDEX_PATH, remote_index)
-    
-    console.print(f"📤 Published plugin to remote: {name}@{version}", style="green")
-    console.print(f"   Location: {remote_plugin_dir}", style="dim")
+    try:
+        # Try API first
+        api_client = _get_api_client()
+        result = api_client.publish_plugin(
+            local_plugin_dir,
+            name=manifest.get("name"),
+            version=version,
+            description=manifest.get("description"),
+            author=manifest.get("author")
+        )
+        console.print(f"📤 Published plugin to remote API: {name}@{version}", style="green")
+        if result:
+            console.print(f"   Response: {result}", style="dim")
+        return
+    except Exception as e:
+        # Fallback to legacy file system method
+        console.print(f"⚠️ API publish failed, using legacy method: {e}", style="dim")
+        # Create remote directory
+        remote_plugin_dir = os.path.join(REMOTE_PLUGINS_DIR, name, version)
+        os.makedirs(remote_plugin_dir, exist_ok=True)
+        
+        # Copy files to remote
+        plugin_file = os.path.join(local_plugin_dir, "plugin.py")
+        if not os.path.exists(plugin_file):
+            raise RuntimeError(f"Plugin file not found: {plugin_file}")
+        
+        shutil.copy2(plugin_file, os.path.join(remote_plugin_dir, "plugin.py"))
+        
+        manifest_file = os.path.join(local_plugin_dir, "manifest.json")
+        if os.path.exists(manifest_file):
+            shutil.copy2(manifest_file, os.path.join(remote_plugin_dir, "manifest.json"))
+        
+        # Copy other files
+        for item in os.listdir(local_plugin_dir):
+            local_item_path = os.path.join(local_plugin_dir, item)
+            if os.path.isfile(local_item_path) and item not in ["plugin.py", "manifest.json"]:
+                shutil.copy2(local_item_path, os.path.join(remote_plugin_dir, item))
+        
+        # Update remote index
+        remote_index = _read_json(REMOTE_INDEX_PATH, {})
+        if name not in remote_index:
+            remote_index[name] = {"versions": [], "latest": version}
+        
+        if version not in remote_index[name]["versions"]:
+            remote_index[name]["versions"].append(version)
+            remote_index[name]["versions"].sort(key=lambda v: _parse_version_for_sort(v), reverse=True)
+        
+        remote_index[name]["latest"] = remote_index[name]["versions"][0]
+        _write_json(REMOTE_INDEX_PATH, remote_index)
+        
+        console.print(f"📤 Published plugin to remote: {name}@{version}", style="green")
+        console.print(f"   Location: {remote_plugin_dir}", style="dim")
 
 
 def list_remote_plugins():
-    """List available plugins in remote registry"""
-    remote_index = _read_json(REMOTE_INDEX_PATH, {})
-    if not remote_index:
-        console.print("🚫 No plugins in remote registry", style="yellow")
+    """List available plugins in remote registry (using API or legacy file system)"""
+    try:
+        # Try API first
+        api_client = _get_api_client()
+        index_data = api_client.get_plugin_index()
+        
+        from rich.table import Table
+        table = Table(title="Remote Registry Plugins (API)")
+        table.add_column("Name", style="cyan", no_wrap=True)
+        table.add_column("Latest Version", style="green")
+        table.add_column("All Versions", style="magenta")
+        
+        if isinstance(index_data, dict):
+            # Handle API response structure: {"data": {...}} or direct {...}
+            plugins_dict = index_data.get("data", index_data)
+            
+            for name, info in plugins_dict.items():
+                if isinstance(info, dict):
+                    latest = info.get("latest", "N/A")
+                    versions = info.get("versions", [])
+                    if isinstance(versions, list):
+                        versions_str = ", ".join(str(v) for v in versions)
+                    else:
+                        versions_str = str(versions)
+                    table.add_row(name, str(latest), versions_str)
+                else:
+                    table.add_row(name, str(info), "")
+        
+        console.print(table)
         return
-    
-    from rich.table import Table
-    table = Table(title="Remote Registry Plugins")
-    table.add_column("Name", style="cyan", no_wrap=True)
-    table.add_column("Latest Version", style="green")
-    table.add_column("All Versions", style="magenta")
-    
-    for name, info in remote_index.items():
-        latest = info.get("latest", "N/A")
-        versions = ", ".join(info.get("versions", []))
-        table.add_row(name, latest, versions)
-    
-    console.print(table)
+    except Exception as e:
+        # Fallback to legacy file system method
+        console.print(f"⚠️ API list failed, using legacy method: {e}", style="dim")
+        remote_index = _read_json(REMOTE_INDEX_PATH, {})
+        if not remote_index:
+            console.print("🚫 No plugins in remote registry", style="yellow")
+            return
+        
+        from rich.table import Table
+        table = Table(title="Remote Registry Plugins (Legacy)")
+        table.add_column("Name", style="cyan", no_wrap=True)
+        table.add_column("Latest Version", style="green")
+        table.add_column("All Versions", style="magenta")
+        
+        for name, info in remote_index.items():
+            latest = info.get("latest", "N/A")
+            versions = ", ".join(info.get("versions", []))
+            table.add_row(name, latest, versions)
+        
+        console.print(table)
