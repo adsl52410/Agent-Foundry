@@ -21,7 +21,7 @@ class PluginRegistryAPI:
         Initialize API client
         
         Args:
-            base_url: Base URL of the API server (e.g., "http://localhost:8089/api/v1")
+            base_url: Base URL of the API server (e.g., "https://agent-foundry.org/api/v1")
         """
         self.base_url = base_url.rstrip('/')
         self.session = requests.Session()

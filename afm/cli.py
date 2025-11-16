@@ -90,7 +90,7 @@ def remote_list():
 
 
 @main.command(name="config")
-@click.option('--api-url', default=None, help='Set Plugin Registry API URL (e.g., http://localhost:8089/api/v1)')
+@click.option('--api-url', default=None, help='Set Plugin Registry API URL (e.g., https://agent-foundry.org/api/v1)')
 @click.option('--show', is_flag=True, help='Show current configuration')
 def config(api_url, show):
     """Configure Plugin Registry API settings."""
